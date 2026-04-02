@@ -1,0 +1,118 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: offlineqa-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: offlineqa
+      MYSQL_USER: offlineqa
+      MYSQL_PASSWORD: offlineqa123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot123"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: offlineqa-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+  milvus:
+    image: milvusdb/milvus:v2.4.11
+    container_name: offlineqa-milvus
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_USE_EMBED: "true"
+      COMMON_STORAGETYPE: "local"
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    volumes:
+      - milvus_data:/var/lib/milvus
+
+  ollama:
+    image: ollama/ollama:0.3.12
+    container_name: offlineqa-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+
+  ollama-init:
+    image: ollama/ollama:0.3.12
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c", "ollama pull qwen2:7b && ollama pull nomic-embed-text"]
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+
+  qdrant:
+    image: qdrant/qdrant:v1.11.3
+    container_name: offlineqa-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: offlineqa-backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      redis:
+        condition: service_started
+      ollama-init:
+        condition: service_completed_successfully
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/offlineqa?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: offlineqa
+      SPRING_DATASOURCE_PASSWORD: offlineqa123
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      MILVUS_ENABLED: "true"
+      MILVUS_URI: http://milvus:19530
+      VOLC_SEARCH_ENABLED: ${VOLC_SEARCH_ENABLED:-false}
+      VOLC_SEARCH_BASE_URL: ${VOLC_SEARCH_BASE_URL:-https://open.volcengineapi.com}
+      VOLC_SEARCH_API_KEY: ${VOLC_SEARCH_API_KEY:-}
+    ports:
+      - "8080:8080"
+    volumes:
+      - backend_data:/data
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: offlineqa-frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  mysql_data:
+  redis_data:
+  milvus_data:
+  ollama_data:
+  qdrant_data:
+  backend_data:
