@@ -1,0 +1,135 @@
+package com.offlineqa.service;
+
+import com.offlineqa.model.RetrievedChunk;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+
+@Service
+public class QdrantService {
+
+    private final WebClient webClient;
+    private final String collectionName;
+    private final AtomicInteger vectorSize = new AtomicInteger(0);
+
+    public QdrantService(@Value("${app.qdrant.base-url}") String baseUrl,
+                         @Value("${app.qdrant.collection}") String collectionName) {
+        this.webClient = WebClient.builder().baseUrl(baseUrl).build();
+        this.collectionName = collectionName;
+    }
+
+    public void upsert(String userId, String kbId, String content, String contentHash, List<Double> vector, LocalDateTime lastAccessedAt) {
+        ensureCollection(vector.size());
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("userId", userId);
+        payload.put("kbId", kbId);
+        payload.put("content", content);
+        payload.put("contentHash", contentHash);
+        payload.put("lastAccessedAt", toEpoch(lastAccessedAt));
+
+        Map<String, Object> point = Map.of(
+                "id", UUID.randomUUID().toString(),
+                "vector", vector,
+                "payload", payload
+        );
+
+        webClient.put()
+                .uri("/collections/{name}/points", collectionName)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of("points", List.of(point)))
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<RetrievedChunk> search(String userId, String kbId, List<Double> queryVector, int topK, double scoreThreshold) {
+        ensureCollection(queryVector.size());
+        Map<String, Object> filter = scopeFilter(userId, kbId);
+        Map<String, Object> body = new HashMap<>();
+        body.put("vector", queryVector);
+        body.put("limit", topK);
+        body.put("with_payload", true);
+        body.put("score_threshold", scoreThreshold);
+        body.put("filter", filter);
+
+        Map<?, ?> response = webClient.post()
+                .uri("/collections/{name}/points/search", collectionName)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
+
+        List<RetrievedChunk> out = new ArrayList<>();
+        if (response == null) {
+            return out;
+        }
+        List<Map<String, Object>> result = (List<Map<String, Object>>) response.get("result");
+        if (result == null) {
+            return out;
+        }
+        for (Map<String, Object> item : result) {
+            Number score = (Number) item.get("score");
+            Map<String, Object> payload = (Map<String, Object>) item.get("payload");
+            if (payload != null && payload.get("content") != null) {
+                out.add(new RetrievedChunk(payload.get("content").toString(), score.doubleValue()));
+            }
+        }
+        return out;
+    }
+
+    public void deleteExpired(LocalDateTime expiredBefore) {
+        Map<String, Object> filter = Map.of(
+                "must", List.of(
+                        Map.of("key", "lastAccessedAt", "range", Map.of("lt", toEpoch(expiredBefore)))
+                )
+        );
+        webClient.post()
+                .uri("/collections/{name}/points/delete", collectionName)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of("filter", filter))
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+    }
+
+    private void ensureCollection(int size) {
+        if (vectorSize.compareAndSet(0, size)) {
+            Map<String, Object> body = Map.of(
+                    "vectors", Map.of("size", size, "distance", "Cosine")
+            );
+            webClient.put()
+                    .uri("/collections/{name}", collectionName)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(body)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .onErrorResume(ex -> webClient.get().uri("/collections/{name}", collectionName).retrieve().bodyToMono(String.class))
+                    .block();
+        }
+    }
+
+    private Map<String, Object> scopeFilter(String userId, String kbId) {
+        return Map.of(
+                "must", List.of(
+                        Map.of("key", "userId", "match", Map.of("value", userId)),
+                        Map.of("key", "kbId", "match", Map.of("value", kbId))
+                )
+        );
+    }
+
+    private long toEpoch(LocalDateTime time) {
+        return time.toInstant(ZoneOffset.UTC).toEpochMilli();
+    }
+}

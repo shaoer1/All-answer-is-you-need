@@ -1,0 +1,51 @@
+server:
+  port: 8080
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/offlineqa?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${SPRING_DATASOURCE_USERNAME:offlineqa}
+    password: ${SPRING_DATASOURCE_PASSWORD:offlineqa123}
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:redis}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD:}
+      timeout: 5s
+  sql:
+    init:
+      mode: always
+      continue-on-error: true
+
+app:
+  storage:
+    base-dir: /data/uploads
+  rag:
+    max-top-k: 5
+    query-top-k: 5
+    max-chunk-size: 800
+    min-chunk-size: 220
+    similarity-threshold: 0.25
+    idle-user-expire-minutes: 120
+  context:
+    window-rounds: 6
+    summary-trigger-messages: 16
+  ollama:
+    base-url: http://ollama:11434
+    chat-model: qwen2:7b
+    embedding-model: nomic-embed-text
+  qdrant:
+    base-url: http://qdrant:6333
+    collection: kb_chunks
+  milvus:
+    enabled: ${MILVUS_ENABLED:false}
+    uri: ${MILVUS_URI:http://milvus:19530}
+  volc:
+    search-enabled: ${VOLC_SEARCH_ENABLED:false}
+    base-url: ${VOLC_SEARCH_BASE_URL:https://open.volcengineapi.com}
+    api-key: ${VOLC_SEARCH_API_KEY:}
