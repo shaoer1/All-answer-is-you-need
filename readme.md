@@ -1,6 +1,6 @@
 #ALL answer is you need全栈智能系统
 
-## 技术栈：Java + Vue3 + 本地7B部署
+## 技术栈：Java + Vue3 + 本地部署大模型
 
 
 ## 一、项目概述
