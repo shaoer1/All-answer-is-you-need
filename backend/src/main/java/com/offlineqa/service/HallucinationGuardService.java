@@ -9,16 +9,16 @@ public class HallucinationGuardService {
 
     public String enforce(String answer, String ragContext, String webEvidence) {
         if (answer == null || answer.isBlank()) {
-            return "我无法从现有资料得出可靠结论。";
+            return "抱歉，暂时无法回答该问题";
         }
 
         String normalized = answer.toLowerCase(Locale.ROOT);
         if (containsRiskPhrase(normalized) && (ragContext == null || ragContext.isBlank()) && (webEvidence == null || webEvidence.isBlank())) {
-            return "当前检索资料不足，我不能给出无依据结论。";
+            return "抱歉，暂时无法回答该问题";
         }
 
         if ((ragContext == null || ragContext.isBlank()) && (webEvidence == null || webEvidence.isBlank())) {
-            return "我暂时没有检索到足够依据，建议补充语料后再问。";
+            return "抱歉，暂时无法回答该问题";
         }
 
         return answer;

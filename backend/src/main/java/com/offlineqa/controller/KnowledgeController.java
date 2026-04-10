@@ -20,9 +20,9 @@ public class KnowledgeController {
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public UploadResponse upload(@RequestParam(required = false) String username,
-                                 @RequestParam(required = false) String userId,
-                                 @RequestParam String kbId,
+    public UploadResponse upload(@RequestParam(value = "username", required = false) String username,
+                                 @RequestParam(value = "userId", required = false) String userId,
+                                 @RequestParam("kbId") Long kbId,
                                  @RequestParam("file") MultipartFile file) {
         String principal = (username != null && !username.isBlank()) ? username : userId;
         return ingestionService.upload(principal, kbId, file);

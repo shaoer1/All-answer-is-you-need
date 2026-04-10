@@ -15,6 +15,9 @@ public class AdaptiveChunkService {
     @Value("${app.rag.min-chunk-size}")
     private int minChunkSize;
 
+    @Value("${app.rag.chunk-overlap:80}")
+    private int chunkOverlap;
+
     public List<String> split(String text) {
         List<String> result = new ArrayList<>();
         if (text == null || text.isBlank()) {
@@ -59,11 +62,19 @@ public class AdaptiveChunkService {
             int last = result.size() - 1;
             result.set(last, result.get(last) + "\n\n" + chunk);
         }
+        String overlap = "";
+        if (chunkOverlap > 0 && !chunk.isEmpty()) {
+            int start = Math.max(0, chunk.length() - Math.min(chunkOverlap, chunk.length()));
+            overlap = chunk.substring(start);
+        }
         buffer.setLength(0);
+        if (!overlap.isEmpty()) {
+            buffer.append(overlap);
+        }
     }
 
     private void splitLongParagraph(List<String> result, String paragraph) {
-        String[] sentences = paragraph.split("(?<=[。！？.!?])");
+        String[] sentences = paragraph.split("(?<=[。！？.!?；;])");
         StringBuilder sentenceBuffer = new StringBuilder();
         for (String sentence : sentences) {
             if (sentenceBuffer.length() + sentence.length() <= maxChunkSize) {

@@ -17,7 +17,7 @@ public class SessionService {
         this.sessionRepository = sessionRepository;
     }
 
-    public long createSession(String username, String kbId, String sessionName) {
+    public long createSession(String username, Long kbId, String sessionName) {
         long userId = userService.initUser(username);
         return sessionRepository.create(userId, kbId, sessionName);
     }
@@ -40,5 +40,10 @@ public class SessionService {
     public void updateSummaryText(String username, Long sessionId, String summaryText) {
         long userId = userService.initUser(username);
         sessionRepository.updateSummaryText(userId, sessionId, summaryText);
+    }
+
+    public void updateSessionName(String username, Long sessionId, String name) {
+        long userId = userService.initUser(username);
+        sessionRepository.updateName(userId, sessionId, name);
     }
 }

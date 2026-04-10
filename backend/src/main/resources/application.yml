@@ -2,18 +2,23 @@ server:
   port: 8080
 
 spring:
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
   servlet:
     multipart:
       max-file-size: 50MB
       max-request-size: 50MB
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/offlineqa?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    username: ${SPRING_DATASOURCE_USERNAME:offlineqa}
-    password: ${SPRING_DATASOURCE_PASSWORD:offlineqa123}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/offlineqa?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER:com.mysql.cj.jdbc.Driver}
+    username: ${SPRING_DATASOURCE_USERNAME:szz}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
   data:
     redis:
-      host: ${SPRING_REDIS_HOST:redis}
+      host: ${SPRING_REDIS_HOST:localhost}
       port: ${SPRING_REDIS_PORT:6379}
       password: ${SPRING_REDIS_PASSWORD:}
       timeout: 5s
@@ -23,29 +28,44 @@ spring:
       continue-on-error: true
 
 app:
+  dev:
+    skip-external-services: ${APP_DEV_SKIP_EXTERNAL_SERVICES:false}
+  security:
+    model-timeout-seconds: ${APP_SECURITY_MODEL_TIMEOUT_SECONDS:45}
   storage:
-    base-dir: /data/uploads
+    base-dir: ${APP_STORAGE_BASE_DIR:./data/uploads}
   rag:
     max-top-k: 5
     query-top-k: 5
     max-chunk-size: 800
     min-chunk-size: 220
+    chunk-overlap: 80
     similarity-threshold: 0.25
     idle-user-expire-minutes: 120
   context:
     window-rounds: 6
     summary-trigger-messages: 16
   ollama:
-    base-url: http://ollama:11434
+    base-url: ${APP_OLLAMA_BASE_URL:http://localhost:11434}
     chat-model: qwen2:7b
     embedding-model: nomic-embed-text
   qdrant:
-    base-url: http://qdrant:6333
+    base-url: ${APP_QDRANT_BASE_URL:http://localhost:6333}
     collection: kb_chunks
   milvus:
     enabled: ${MILVUS_ENABLED:false}
     uri: ${MILVUS_URI:http://milvus:19530}
   volc:
     search-enabled: ${VOLC_SEARCH_ENABLED:false}
-    base-url: ${VOLC_SEARCH_BASE_URL:https://open.volcengineapi.com}
+    base-url: ${VOLC_SEARCH_BASE_URL:https://open.feedcoopapi.com}
     api-key: ${VOLC_SEARCH_API_KEY:}
+    path: ${VOLC_SEARCH_PATH:/search_api/web_search}
+    search-type: ${VOLC_SEARCH_TYPE:web_summary}
+    top-k: ${VOLC_SEARCH_TOP_K:3}
+    timeout-ms: ${VOLC_SEARCH_TIMEOUT_MS:8000}
+    access-key: ${VOLC_SEARCH_ACCESS_KEY:}
+    secret-key: ${VOLC_SEARCH_SECRET_KEY:}
+    region: ${VOLC_SEARCH_REGION:cn-beijing}
+    service: ${VOLC_SEARCH_SERVICE:volc_torchlight_api}
+    action: ${VOLC_SEARCH_ACTION:WebSearch}
+    version: ${VOLC_SEARCH_VERSION:2025-01-01}

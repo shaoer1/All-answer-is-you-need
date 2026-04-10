@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Repository
@@ -68,6 +69,36 @@ public class ChunkRepository {
                 userId,
                 kbId
         );
+    }
+
+    public List<ChunkRecord> findRecentByScope(String userId, String kbId, int limit) {
+        int safeLimit = Math.max(20, Math.min(limit, 500));
+        return jdbcTemplate.query(
+                "SELECT * FROM chunk_record WHERE user_id = ? AND kb_id = ? ORDER BY last_accessed_at DESC LIMIT ?",
+                rowMapper,
+                userId,
+                kbId,
+                safeLimit
+        );
+    }
+
+    public List<ChunkRecord> findByKeywords(String userId, String kbId, List<String> keywords, int limit) {
+        if (keywords == null || keywords.isEmpty()) {
+            return List.of();
+        }
+        int safeLimit = Math.max(10, Math.min(limit, 200));
+        StringBuilder sql = new StringBuilder("SELECT * FROM chunk_record WHERE user_id = ? AND kb_id = ? AND (");
+        List<Object> args = new ArrayList<>();
+        args.add(userId);
+        args.add(kbId);
+        for (int i = 0; i < keywords.size(); i++) {
+            if (i > 0) sql.append(" OR ");
+            sql.append("content LIKE ?");
+            args.add("%" + keywords.get(i) + "%");
+        }
+        sql.append(") ORDER BY last_accessed_at DESC LIMIT ?");
+        args.add(safeLimit);
+        return jdbcTemplate.query(sql.toString(), rowMapper, args.toArray());
     }
 
     public void touchScope(String userId, String kbId, LocalDateTime now) {

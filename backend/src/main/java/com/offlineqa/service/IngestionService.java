@@ -21,23 +21,27 @@ public class IngestionService {
     private final AdaptiveChunkService chunkService;
     private final EmbeddingService embeddingService;
     private final VectorStoreService vectorStoreService;
+    private final UserService userService;
 
     public IngestionService(DocumentParserService parserService,
                             TextCleanerService cleanerService,
                             AdaptiveChunkService chunkService,
                             EmbeddingService embeddingService,
-                            VectorStoreService vectorStoreService) {
+                            VectorStoreService vectorStoreService,
+                            UserService userService) {
         this.parserService = parserService;
         this.cleanerService = cleanerService;
         this.chunkService = chunkService;
         this.embeddingService = embeddingService;
         this.vectorStoreService = vectorStoreService;
+        this.userService = userService;
     }
 
-    public UploadResponse upload(String userId, String kbId, MultipartFile file) {
-        if (userId == null || userId.isBlank()) {
+    public UploadResponse upload(String principal, Long kbId, MultipartFile file) {
+        if (principal == null || principal.isBlank()) {
             throw new IllegalArgumentException("username/userId 不能为空");
         }
+        String userId = String.valueOf(userService.initUser(principal));
 
         String parsed = parserService.parse(file);
         String cleaned = cleanerService.clean(parsed);
@@ -51,14 +55,14 @@ public class IngestionService {
         for (int i = 0; i < chunks.size(); i++) {
             String chunk = chunks.get(i);
             String hash = hash(chunk);
-            if (vectorStoreService.existsByHash(userId, kbId, hash)) {
+            if (vectorStoreService.existsByHash(userId, String.valueOf(kbId), hash)) {
                 ignoredHashes.add(hash);
                 continue;
             }
             List<Double> vector = embeddingService.embed(chunk);
             ChunkRecord record = new ChunkRecord();
             record.setUserId(userId);
-            record.setKbId(kbId);
+            record.setKbId(String.valueOf(kbId));
             record.setDocId(docId);
             record.setChunkIndex(i);
             record.setContent(chunk);

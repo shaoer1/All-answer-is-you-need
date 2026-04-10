@@ -19,7 +19,11 @@ public class RedisMemoryService {
             return;
         }
         String key = "mem:short:" + username + ":" + sessionId;
-        redisTemplate.opsForValue().set(key, content, Duration.ofHours(4));
+        try {
+            redisTemplate.opsForValue().set(key, content, Duration.ofHours(4));
+        } catch (Exception ignored) {
+            // Redis is optional for local development; ignore cache failures.
+        }
     }
 
     public String getShortTerm(String username, Long sessionId) {
@@ -27,6 +31,10 @@ public class RedisMemoryService {
             return "";
         }
         String key = "mem:short:" + username + ":" + sessionId;
-        return redisTemplate.opsForValue().get(key);
+        try {
+            return redisTemplate.opsForValue().get(key);
+        } catch (Exception ignored) {
+            return "";
+        }
     }
 }

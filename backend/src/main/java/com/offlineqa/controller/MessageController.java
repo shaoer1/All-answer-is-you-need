@@ -22,7 +22,9 @@ public class MessageController implements MessageApi {
 
     @Override
     @GetMapping("/list")
-    public List<ChatMessage> list(@RequestParam String username, @RequestParam Long sessionId, @RequestParam(defaultValue = "50") int limit) {
+    public List<ChatMessage> list(@RequestParam("username") String username,
+                                  @RequestParam("sessionId") Long sessionId,
+                                  @RequestParam(value = "limit", defaultValue = "50") int limit) {
         return messageService.list(username, sessionId, limit);
     }
 }

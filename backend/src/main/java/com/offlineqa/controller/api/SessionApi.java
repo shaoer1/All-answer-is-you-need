@@ -12,7 +12,9 @@ import java.util.List;
 public interface SessionApi {
     SessionCreateResponse create(@Valid @RequestBody SessionCreateRequest request);
 
-    List<ChatSession> list(@RequestParam String username);
+    List<ChatSession> list(@RequestParam("username") String username);
 
-    void delete(@RequestParam String username, @RequestParam Long sessionId);
+    void delete(@RequestParam("username") String username, @RequestParam("sessionId") Long sessionId);
+
+    void updateName(@RequestParam("username") String username, @RequestParam("sessionId") Long sessionId, @RequestParam("name") String name);
 }

@@ -18,7 +18,7 @@ public class SessionRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public long create(Long userId, String kbId, String sessionName) {
+    public long create(Long userId, Long kbId, String sessionName) {
         jdbcTemplate.update(
                 "INSERT INTO chat_session(user_id, kb_id, session_name, is_delete, summary_text, created_at) VALUES (?, ?, ?, 0, '', ?)",
                 userId,
@@ -36,7 +36,7 @@ public class SessionRepository {
                     ChatSession session = new ChatSession();
                     session.setId(rs.getLong("id"));
                     session.setUserId(rs.getLong("user_id"));
-                    session.setKbId(rs.getString("kb_id"));
+                    session.setKbId(rs.getLong("kb_id"));
                     session.setSessionName(rs.getString("session_name"));
                     session.setIsDelete(rs.getInt("is_delete"));
                     session.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
@@ -65,6 +65,15 @@ public class SessionRepository {
                 "UPDATE chat_session SET summary_text = ?, summary_updated_at = ? WHERE id = ? AND user_id = ?",
                 summary,
                 Timestamp.valueOf(LocalDateTime.now()),
+                sessionId,
+                userId
+        );
+    }
+
+    public void updateName(Long userId, Long sessionId, String name) {
+        jdbcTemplate.update(
+                "UPDATE chat_session SET session_name = ? WHERE id = ? AND user_id = ?",
+                name,
                 sessionId,
                 userId
         );
